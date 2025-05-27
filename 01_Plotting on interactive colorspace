@@ -1,0 +1,38 @@
+
+install.packages("plotly")
+library(plotly)
+
+# Example RGB values (scale: 0–255)
+rgb_data <- data.frame(
+  region = c("Breast_and_moustachial stipe", "Barred belly", "Vent"),
+  R = c(116.635, 61.418, 83.765),
+  G = c(106.597, 51.153, 99.267),
+  B = c(83.765, 36.063, 70.007)
+)
+
+
+# Normalize RGB to [0,1] for color rendering
+rgb_data$color <- rgb(rgb_data$R, rgb_data$G, rgb_data$B, maxColorValue = 255)
+
+fig <- plot_ly(
+  data = rgb_data,
+  x = ~R, y = ~G, z = ~B,
+  type = 'scatter3d',
+  mode = 'markers+text',
+  marker = list(size = 10, color = rgb_data$color),
+  text = ~region,
+  textposition = 'top center'
+)
+
+fig <- fig %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Red", range = c(0,255)),
+      yaxis = list(title = "Green", range = c(0,255)),
+      zaxis = list(title = "Blue", range = c(0,255))
+    ),
+    title = "RGB Color Space with Plumage Points"
+  )
+
+fig
+
