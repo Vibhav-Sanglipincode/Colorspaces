@@ -1,38 +1,83 @@
-
 install.packages("plotly")
 library(plotly)
 
-# Example RGB values (scale: 0–255)
-rgb_data <- data.frame(
-  region = c("Breast_and_moustachial stipe", "Barred belly", "Vent"),
+# Original RGB data: G. radiatum
+radiatum_data <- data.frame(
+  region = c("A", "B", "C"),
   R = c(116.635, 61.418, 83.765),
   G = c(106.597, 51.153, 99.267),
-  B = c(83.765, 36.063, 70.007)
+  B = c(83.765, 36.063, 70.007),
+  species = "G. radiatum"
 )
 
+# New RGB data: G. malabaricum
+malabaricum_data <- data.frame(
+  region = c("A*", "B*", "C*"),
+  R = c(99.673, 51.289, 62.415),
+  G = c(86.273, 40.197, 27.655),
+  B = c(62.415, 58.929, 38.474),
+  species = "G. malabaricum"
+)
 
-# Normalize RGB to [0,1] for color rendering
-rgb_data$color <- rgb(rgb_data$R, rgb_data$G, rgb_data$B, maxColorValue = 255)
+# Combine both datasets
+rgb_data <- rbind(radiatum_data, malabaricum_data)
 
+# Assign colors by species
+species_colors <- c("G. radiatum" = "#1f77b4",     # blue
+                    "G. malabaricum" = "#d62728")  # red
+rgb_data$color <- species_colors[rgb_data$species]
+
+# Plot 3D scatter
 fig <- plot_ly(
   data = rgb_data,
   x = ~R, y = ~G, z = ~B,
   type = 'scatter3d',
   mode = 'markers+text',
-  marker = list(size = 10, color = rgb_data$color),
+  marker = list(size = 8, color = rgb_data$color),
   text = ~region,
-  textposition = 'top center'
+  textposition = 'top center',
+  hoverinfo = 'text',
+  name = ~species,
+  showlegend = FALSE
 )
 
+# Add "clusters" by connecting the 3 points per species using a transparent polygon mesh
+# Use `add_trace` for surfaces to visually group points
+
+# G. radiatum cluster
+fig <- fig %>% add_trace(
+  type = 'mesh3d',
+  x = radiatum_data$R,
+  y = radiatum_data$G,
+  z = radiatum_data$B,
+  opacity = 0.3,
+  color = species_colors["G. radiatum"],
+  name = "G. radiatum cluster",
+  showscale = FALSE
+)
+
+# G. malabaricum cluster
+fig <- fig %>% add_trace(
+  type = 'mesh3d',
+  x = malabaricum_data$R,
+  y = malabaricum_data$G,
+  z = malabaricum_data$B,
+  opacity = 0.3,
+  color = species_colors["G. malabaricum"],
+  name = "G. malabaricum cluster",
+  showscale = FALSE
+)
+
+# Layout
 fig <- fig %>%
   layout(
     scene = list(
-      xaxis = list(title = "Red", range = c(0,255)),
-      yaxis = list(title = "Green", range = c(0,255)),
-      zaxis = list(title = "Blue", range = c(0,255))
+      xaxis = list(title = "Red", range = c(0, 255)),
+      yaxis = list(title = "Green", range = c(0, 255)),
+      zaxis = list(title = "Blue", range = c(0, 255))
     ),
-    title = "RGB Color Space with Plumage Points"
+    title = "RGB Color Space with Species Clusters",
+    legend = list(title = list(text = "Species"))
   )
 
 fig
-
