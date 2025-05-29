@@ -1,60 +1,117 @@
-# Install packages if not already installed
-if (!requireNamespace("RImageJROI", quietly = TRUE)) {
-  install.packages("devtools")
-  devtools::install_github("beckyfisher/RImageJROI")
-}
+# Load required packages
+install.packages("plotly")
+library(plotly)
 
-library(imager)
-library(RImageJROI)
-library(colorspace)
-library(sp)  # For point.in.polygon()
+# Original RGB data: G. radiatum
+radiatum_data <- data.frame(
+  region = c("A", "B", "C", "D"),
+  R = c(116.635, 61.418, 83.765, 131.795),
+  G = c(106.597, 51.153, 99.267, 125.317),
+  B = c(83.765, 36.063, 70.007, 114.098),
+  species = "G. radiatum"
+)
 
-# Load your image (adjust path)
-img_path <- "C:/Users/vibha/Documents/Jungle owlet/Jungle owlet/Standadised_Jungle Owlet_Dec'24-20250520T050219Z-1-001/Standadised_Jungle Owlet_Dec_24/IMG_1647.jpg"
-img <- load.image(img_path)
+# New RGB data: G. malabaricum
+malabaricum_data <- data.frame(
+  region = c("A*", "B*", "C*", "D*"),
+  R = c(99.673, 51.289, 62.415, 133.424),
+  G = c(86.273, 40.197, 27.655, 128.550),
+  B = c(62.415, 58.929, 38.474, 120.864),
+  species = "G. malabaricum"
+)
 
-# Convert image to HSV
-img_hsv <- RGBtoHSV(img)
+# Combine datasets
+rgb_data <- rbind(radiatum_data, malabaricum_data)
 
-# Load ROI zip file exported from ImageJ
-roi_zip_path <- "C:/Users/vibha/OneDrive/Desktop/Jungle owlet.zip"
-rois <- read.ijzip(roi_zip_path)  # list of ROI polygons
+# Assign colors
+species_colors <- c("G. radiatum" = "#1f77b4", "G. malabaricum" = "#d62728")
+rgb_data$color <- species_colors[rgb_data$species]
 
-# Get image dimensions
-img_dim <- dim(img)  # [x,y,channels,frames]
+# Compute centroids
+centroid_radiatum <- colMeans(radiatum_data[, c("R", "G", "B")])
+centroid_malabaricum <- colMeans(malabaricum_data[, c("R", "G", "B")])
 
-# Prepare to store mean HSV per ROI
-mean_hsv_list <- list()
+# Euclidean distance
+euclidean_cluster_distance <- sqrt(sum((centroid_radiatum - centroid_malabaricum)^2))
 
-for(i in seq_along(rois)) {
-  roi <- rois[[i]]
-  
-  # roi is a list with polygon x and y coordinates
-  poly_x <- roi$coords$x
-  poly_y <- roi$coords$y
-  
-  # Generate grid of all pixel coords
-  x_coords <- rep(1:img_dim[1], times = img_dim[2])
-  y_coords <- rep(1:img_dim[2], each = img_dim[1])
-  
-  # Determine which pixels fall inside polygon
-  inside <- point.in.polygon(x_coords, y_coords, poly_x, poly_y)
-  mask <- matrix(inside > 0, nrow = img_dim[1], ncol = img_dim[2])
-  
-  # Extract HSV pixels inside ROI
-  hue_vals <- img_hsv[,,1,1][mask]
-  chroma_vals <- img_hsv[,,2,1][mask]
-  value_vals <- img_hsv[,,3,1][mask]
-  
-  # Calculate mean HSV (Hue scaled to degrees)
-  mean_hue <- mean(hue_vals, na.rm = TRUE) * 360
-  mean_chroma <- mean(chroma_vals, na.rm = TRUE)
-  mean_value <- mean(value_vals, na.rm = TRUE)
-  
-  mean_hsv_list[[i]] <- c(mean_hue, mean_chroma, mean_value)
-  
-  cat(sprintf("ROI %d mean HSV: Hue=%.2f°, Chroma=%.3f, Value=%.3f\n",
-              i, mean_hue, mean_chroma, mean_value))
-}
+# Angular separation
+dot_product <- sum(centroid_radiatum * centroid_malabaricum)
+mag_a <- sqrt(sum(centroid_radiatum^2))
+mag_b <- sqrt(sum(centroid_malabaricum^2))
+cos_theta <- dot_product / (mag_a * mag_b)
+angle_degrees <- acos(pmin(pmax(cos_theta, -1), 1)) * (180 / pi)
 
-# Now mean_hsv_list holds mean HSV for all ROIs, ready for further processing!
+# Print distance metrics
+cat("Euclidean distance between clusters:", round(euclidean_cluster_distance, 2), "\n")
+cat("Angular separation between clusters:", round(angle_degrees, 2), "degrees\n")
+
+# 3D plot: points
+fig <- plot_ly(
+  type = 'scatter3d',
+  mode = 'markers+text'
+)
+
+fig <- fig %>% add_trace(
+  data = rgb_data,
+  x = ~R, y = ~G, z = ~B,
+  text = ~region,
+  marker = list(size = 8, color = ~color),
+  textposition = 'top center',
+  hoverinfo = 'text',
+  showlegend = FALSE
+)
+
+# Add mesh clusters
+fig <- fig %>% add_trace(
+  type = 'mesh3d',
+  x = radiatum_data$R, y = radiatum_data$G, z = radiatum_data$B,
+  opacity = 0.3, color = species_colors["G. radiatum"],
+  name = "G. radiatum cluster", showscale = FALSE
+)
+
+fig <- fig %>% add_trace(
+  type = 'mesh3d',
+  x = malabaricum_data$R, y = malabaricum_data$G, z = malabaricum_data$B,
+  opacity = 0.3, color = species_colors["G. malabaricum"],
+  name = "G. malabaricum cluster", showscale = FALSE
+)
+
+# Add centroids as points
+fig <- fig %>%
+  add_trace(
+    x = centroid_radiatum["R"], y = centroid_radiatum["G"], z = centroid_radiatum["B"],
+    type = 'scatter3d', mode = 'markers+text',
+    marker = list(size = 12, color = "blue"),
+    text = "Centroid G. radiatum", textposition = 'top center',
+    name = "G. radiatum Centroid"
+  ) %>%
+  add_trace(
+    x = centroid_malabaricum["R"], y = centroid_malabaricum["G"], z = centroid_malabaricum["B"],
+    type = 'scatter3d', mode = 'markers+text',
+    marker = list(size = 12, color = "red"),
+    text = "Centroid G. malabaricum", textposition = 'top center',
+    name = "G. malabaricum Centroid"
+  )
+
+# Line connecting centroids
+fig <- fig %>% add_trace(
+  x = c(centroid_radiatum["R"], centroid_malabaricum["R"]),
+  y = c(centroid_radiatum["G"], centroid_malabaricum["G"]),
+  z = c(centroid_radiatum["B"], centroid_malabaricum["B"]),
+  type = 'scatter3d', mode = 'lines',
+  line = list(color = 'black', width = 4),
+  name = paste0("Centroid Distance\n", round(euclidean_cluster_distance, 2), " units,\n", round(angle_degrees, 2), "°")
+)
+
+# Layout
+fig <- fig %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Red", range = c(0, 255)),
+      yaxis = list(title = "Green", range = c(0, 255)),
+      zaxis = list(title = "Blue", range = c(0, 255))
+    ),
+    title = "RGB Color Space with Species Clusters & Centroid Metrics"
+  )
+
+fig
