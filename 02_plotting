@@ -1,123 +1,117 @@
-# Install & load required packages
-install.packages(c("imager", "colorspace", "pavo"))
-library(imager)
-library(colorspace)
-library(pavo)
-library(grDevices)
+# Load required packages
+install.packages("plotly")
+library(plotly)
 
-# Load image
-img <- load.image("C:/Users/vibha/Documents/Jungle owlet/Jungle owlet/Standadised_Jungle Owlet_Dec'24-20250520T050219Z-1-001/Standadised_Jungle Owlet_Dec_24/IMG_1646.jpg")
+# Original RGB data: G. radiatum
+radiatum_data <- data.frame(
+  region = c("A", "B", "C", "D"),
+  R = c(116.635, 61.418, 83.765, 131.795),
+  G = c(106.597, 51.153, 99.267, 125.317),
+  B = c(83.765, 36.063, 70.007, 114.098),
+  species = "G. radiatum"
+)
 
-# Convert to HSV
-img_hsv <- RGBtoHSV(img)
+# New RGB data: G. malabaricum
+malabaricum_data <- data.frame(
+  region = c("A*", "B*", "C*", "D*"),
+  R = c(99.673, 51.289, 62.415, 133.424),
+  G = c(86.273, 40.197, 27.655, 128.550),
+  B = c(62.415, 58.929, 38.474, 120.864),
+  species = "G. malabaricum"
+)
 
-# Plot image for manual ROI selection
-plot(img)
-roi <- grabRect(img)
-print(roi)
+# Combine datasets
+rgb_data <- rbind(radiatum_data, malabaricum_data)
 
-# Manually set the selected rectangle (modify if needed)
-x_min <- 2057     
-x_max <- 3883     
-y_min <- 1299     
-y_max <- 2223     
+# Assign colors
+species_colors <- c("G. radiatum" = "#1f77b4", "G. malabaricum" = "#d62728")
+rgb_data$color <- species_colors[rgb_data$species]
 
-# Crop region from HSV
-roi_hsv <- img_hsv[y_min:y_max, x_min:x_max, , drop = FALSE]
-dim(roi_hsv)
+# Compute centroids
+centroid_radiatum <- colMeans(radiatum_data[, c("R", "G", "B")])
+centroid_malabaricum <- colMeans(malabaricum_data[, c("R", "G", "B")])
 
-# Extract HSV channels
-hue_values <- roi_hsv[,,1]
-chroma_values <- roi_hsv[,,2]
-value_values <- roi_hsv[,,3]
+# Euclidean distance
+euclidean_cluster_distance <- sqrt(sum((centroid_radiatum - centroid_malabaricum)^2))
 
-# Compute mean HSV
-mean_hue <- mean(hue_values, na.rm = TRUE) * 360  # Hue in degrees
-mean_chroma <- mean(chroma_values, na.rm = TRUE)
-mean_value <- mean(value_values, na.rm = TRUE)
+# Angular separation
+dot_product <- sum(centroid_radiatum * centroid_malabaricum)
+mag_a <- sqrt(sum(centroid_radiatum^2))
+mag_b <- sqrt(sum(centroid_malabaricum^2))
+cos_theta <- dot_product / (mag_a * mag_b)
+angle_degrees <- acos(pmin(pmax(cos_theta, -1), 1)) * (180 / pi)
 
-print(c(mean_hue, mean_chroma, mean_value))
+# Print distance metrics
+cat("Euclidean distance between clusters:", round(euclidean_cluster_distance, 2), "\n")
+cat("Angular separation between clusters:", round(angle_degrees, 2), "degrees\n")
 
-# Convert HSV to RGB (helper function)
-hcv_to_rgb <- function(h, c, v) {
-  h_prime <- h / 60
-  x <- c * (1 - abs((h_prime %% 2) - 1))
-  m <- v - c
-  
-  if (h_prime >= 0 && h_prime < 1) {
-    r <- c; g <- x; b <- 0
-  } else if (h_prime < 2) {
-    r <- x; g <- c; b <- 0
-  } else if (h_prime < 3) {
-    r <- 0; g <- c; b <- x
-  } else if (h_prime < 4) {
-    r <- 0; g <- x; b <- c
-  } else if (h_prime < 5) {
-    r <- x; g <- 0; b <- c
-  } else {
-    r <- c; g <- 0; b <- x
-  }
-  
-  r <- (r + m) * 255
-  g <- (g + m) * 255
-  b <- (b + m) * 255
-  
-  return(c(round(r), round(g), round(b)))
-}
+# 3D plot: points
+fig <- plot_ly(
+  type = 'scatter3d',
+  mode = 'markers+text'
+)
 
-# Use mean HSV to generate RGB
-rgb_values <- hcv_to_rgb(mean_hue, mean_chroma, mean_value)
-print(rgb_values)
+fig <- fig %>% add_trace(
+  data = rgb_data,
+  x = ~R, y = ~G, z = ~B,
+  text = ~region,
+  marker = list(size = 8, color = ~color),
+  textposition = 'top center',
+  hoverinfo = 'text',
+  showlegend = FALSE
+)
 
-# Normalize to 0–1 for spectrum simulation
-rgb_vals <- rgb_values / 255
+# Add mesh clusters
+fig <- fig %>% add_trace(
+  type = 'mesh3d',
+  x = radiatum_data$R, y = radiatum_data$G, z = radiatum_data$B,
+  opacity = 0.3, color = species_colors["G. radiatum"],
+  name = "G. radiatum cluster", showscale = FALSE
+)
 
-# Simulate reflectance spectrum
-wavelengths <- seq(300, 700, length.out = 101)
-red_curve <- dnorm(wavelengths, mean = 620, sd = 50) * rgb_vals[1]
-green_curve <- dnorm(wavelengths, mean = 540, sd = 50) * rgb_vals[2]
-blue_curve <- dnorm(wavelengths, mean = 450, sd = 50) * rgb_vals[3]
-reflectance <- red_curve + green_curve + blue_curve
+fig <- fig %>% add_trace(
+  type = 'mesh3d',
+  x = malabaricum_data$R, y = malabaricum_data$G, z = malabaricum_data$B,
+  opacity = 0.3, color = species_colors["G. malabaricum"],
+  name = "G. malabaricum cluster", showscale = FALSE
+)
 
-# Create pavo spectrum
-spec_data <- as.rspec(data.frame(wl = wavelengths, refl = reflectance))
+# Add centroids as points
+fig <- fig %>%
+  add_trace(
+    x = centroid_radiatum["R"], y = centroid_radiatum["G"], z = centroid_radiatum["B"],
+    type = 'scatter3d', mode = 'markers+text',
+    marker = list(size = 12, color = "blue"),
+    text = "Centroid G. radiatum", textposition = 'top center',
+    name = "G. radiatum Centroid"
+  ) %>%
+  add_trace(
+    x = centroid_malabaricum["R"], y = centroid_malabaricum["G"], z = centroid_malabaricum["B"],
+    type = 'scatter3d', mode = 'markers+text',
+    marker = list(size = 12, color = "red"),
+    text = "Centroid G. malabaricum", textposition = 'top center',
+    name = "G. malabaricum Centroid"
+  )
 
-# Restrict to visible only
-library(dplyr)
+# Line connecting centroids
+fig <- fig %>% add_trace(
+  x = c(centroid_radiatum["R"], centroid_malabaricum["R"]),
+  y = c(centroid_radiatum["G"], centroid_malabaricum["G"]),
+  z = c(centroid_radiatum["B"], centroid_malabaricum["B"]),
+  type = 'scatter3d', mode = 'lines',
+  line = list(color = 'black', width = 4),
+  name = paste0("Centroid Distance\n", round(euclidean_cluster_distance, 2), " units,\n", round(angle_degrees, 2), "°")
+)
 
-spec_vis <- spec_data %>%
-  filter(wl >= 400 & wl <= 700)
+# Layout
+fig <- fig %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Red", range = c(0, 255)),
+      yaxis = list(title = "Green", range = c(0, 255)),
+      zaxis = list(title = "Blue", range = c(0, 255))
+    ),
+    title = "RGB Color Space with Species Clusters & Centroid Metrics"
+  )
 
-# Plot pseudo-spectrum
-plot(spec_vis)
-
-# Avian visual model (VS — no UV)
-# Use the full reflectance spectrum
-# (assuming `spec_data` already spans 300–700 nm)
-vismod_vis <- vismodel(spec_data, visual = "avg.v")
-
-# Continue as usual
-tcs_vis <- colspace(vismod_vis, space = "tcs")
-plot(tcs_vis)
-
-
-# Extract quantum catches
-s <- vismod_vis$s
-m <- vismod_vis$m
-l <- vismod_vis$l
-
-# Convert to spherical coordinates (no u channel here)
-#r <- sqrt(s^2 + m^2 + l^2)
-#theta <- atan2(m, s) * (180 / pi)
-#phi <- acos(l / r) * (180 / pi)
-
-#print(c(r, theta, phi))
-
-# Convert to tetrahedral color space (TCS, VS model)
-tcs_vis <- colspace(vismod_vis, space = "tcs")
-print(tcs_vis)
-
-# Plot TCS
-png("tcs_plot_vs_only.png", width = 800, height = 800)
-plot(tcs_vis, col = "blue", pch = 20, main = "TCS (Visible Spectrum, VS Vision)")
-dev.off()
+fig
