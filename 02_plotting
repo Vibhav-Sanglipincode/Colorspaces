@@ -1,8 +1,7 @@
-# Load required packages
-install.packages("plotly")
+# Load libraries
 library(plotly)
 
-# Original RGB data: G. radiatum
+# Define RGB data
 radiatum_data <- data.frame(
   region = c("A", "B", "C", "D"),
   R = c(116.635, 61.418, 83.765, 131.795),
@@ -11,7 +10,6 @@ radiatum_data <- data.frame(
   species = "G. radiatum"
 )
 
-# New RGB data: G. malabaricum
 malabaricum_data <- data.frame(
   region = c("A*", "B*", "C*", "D*"),
   R = c(99.673, 51.289, 62.415, 133.424),
@@ -20,98 +18,100 @@ malabaricum_data <- data.frame(
   species = "G. malabaricum"
 )
 
-# Combine datasets
+# Combine
 rgb_data <- rbind(radiatum_data, malabaricum_data)
 
-# Assign colors
-species_colors <- c("G. radiatum" = "#1f77b4", "G. malabaricum" = "#d62728")
-rgb_data$color <- species_colors[rgb_data$species]
+# Assign colors per region (custom palette)
+region_colors <- c(
+  "A" = "#1f77b4", "B" = "#1f77b4", "C" = "#1f77b4", "D" = "#1f77b4",
+  "A*" = "#d62728", "B*" = "#d62728", "C*" = "#d62728", "D*" = "#d62728"
+)
 
-# Compute centroids
+# Custom size per point (optional)
+point_sizes <- c(4, 4, 4, 4, 4, 4, 4, 4)
+
+# Add to dataframe
+rgb_data$color <- region_colors[rgb_data$region]
+rgb_data$size <- point_sizes
+
+# Centroids
 centroid_radiatum <- colMeans(radiatum_data[, c("R", "G", "B")])
 centroid_malabaricum <- colMeans(malabaricum_data[, c("R", "G", "B")])
 
-# Euclidean distance
+# Distance & angle
 euclidean_cluster_distance <- sqrt(sum((centroid_radiatum - centroid_malabaricum)^2))
-
-# Angular separation
-dot_product <- sum(centroid_radiatum * centroid_malabaricum)
-mag_a <- sqrt(sum(centroid_radiatum^2))
-mag_b <- sqrt(sum(centroid_malabaricum^2))
-cos_theta <- dot_product / (mag_a * mag_b)
+cos_theta <- sum(centroid_radiatum * centroid_malabaricum) /
+  (sqrt(sum(centroid_radiatum^2)) * sqrt(sum(centroid_malabaricum^2)))
 angle_degrees <- acos(pmin(pmax(cos_theta, -1), 1)) * (180 / pi)
 
-# Print distance metrics
-cat("Euclidean distance between clusters:", round(euclidean_cluster_distance, 2), "\n")
-cat("Angular separation between clusters:", round(angle_degrees, 2), "degrees\n")
+# === Plot ===
+fig <- plot_ly(type = 'scatter3d', mode = 'markers+text')
 
-# 3D plot: points
-fig <- plot_ly(
-  type = 'scatter3d',
-  mode = 'markers+text'
-)
-
-fig <- fig %>% add_trace(
-  data = rgb_data,
-  x = ~R, y = ~G, z = ~B,
-  text = ~region,
-  marker = list(size = 8, color = ~color),
-  textposition = 'top center',
-  hoverinfo = 'text',
-  showlegend = FALSE
-)
+# Add data points
+fig <- fig %>%
+  add_trace(
+    data = rgb_data,
+    x = ~R, y = ~G, z = ~B,
+    text = ~region,
+    marker = list(size = ~size, color = ~color),
+    textposition = 'top center',
+    hoverinfo = 'text',
+    showlegend = FALSE
+  )
 
 # Add mesh clusters
-fig <- fig %>% add_trace(
-  type = 'mesh3d',
-  x = radiatum_data$R, y = radiatum_data$G, z = radiatum_data$B,
-  opacity = 0.3, color = species_colors["G. radiatum"],
-  name = "G. radiatum cluster", showscale = FALSE
-)
+fig <- fig %>%
+  add_trace(
+    type = 'mesh3d',
+    x = radiatum_data$R, y = radiatum_data$G, z = radiatum_data$B,
+    opacity = 0.2, color = 'rgba(31, 119, 180, 0.5)',
+    name = "G. radiatum Cluster", showscale = FALSE
+  ) %>%
+  add_trace(
+    type = 'mesh3d',
+    x = malabaricum_data$R, y = malabaricum_data$G, z = malabaricum_data$B,
+    opacity = 0.2, color = 'rgba(214, 39, 40, 0.5)',
+    name = "G. malabaricum Cluster", showscale = FALSE
+  )
 
-fig <- fig %>% add_trace(
-  type = 'mesh3d',
-  x = malabaricum_data$R, y = malabaricum_data$G, z = malabaricum_data$B,
-  opacity = 0.3, color = species_colors["G. malabaricum"],
-  name = "G. malabaricum cluster", showscale = FALSE
-)
-
-# Add centroids as points
+# Add centroids
 fig <- fig %>%
   add_trace(
     x = centroid_radiatum["R"], y = centroid_radiatum["G"], z = centroid_radiatum["B"],
     type = 'scatter3d', mode = 'markers+text',
-    marker = list(size = 12, color = "blue"),
-    text = "Centroid G. radiatum", textposition = 'top center',
-    name = "G. radiatum Centroid"
+    marker = list(size = 14, color = 'blue'),
+    text = "Centroid radiatum", textposition = 'top center',
+    name = "Radiatum Centroid"
   ) %>%
   add_trace(
     x = centroid_malabaricum["R"], y = centroid_malabaricum["G"], z = centroid_malabaricum["B"],
     type = 'scatter3d', mode = 'markers+text',
-    marker = list(size = 12, color = "red"),
-    text = "Centroid G. malabaricum", textposition = 'top center',
-    name = "G. malabaricum Centroid"
+    marker = list(size = 14, color = 'red'),
+    text = "Centroid malabaricum", textposition = 'top center',
+    name = "Malabaricum Centroid"
   )
 
-# Line connecting centroids
-fig <- fig %>% add_trace(
-  x = c(centroid_radiatum["R"], centroid_malabaricum["R"]),
-  y = c(centroid_radiatum["G"], centroid_malabaricum["G"]),
-  z = c(centroid_radiatum["B"], centroid_malabaricum["B"]),
-  type = 'scatter3d', mode = 'lines',
-  line = list(color = 'black', width = 4),
-  name = paste0("Centroid Distance\n", round(euclidean_cluster_distance, 2), " units,\n", round(angle_degrees, 2), "°")
-)
+# Add centroid connection line
+fig <- fig %>%
+  add_trace(
+    x = c(centroid_radiatum["R"], centroid_malabaricum["R"]),
+    y = c(centroid_radiatum["G"], centroid_malabaricum["G"]),
+    z = c(centroid_radiatum["B"], centroid_malabaricum["B"]),
+    type = 'scatter3d', mode = 'lines',
+    line = list(color = 'black', width = 5),
+    name = paste0("Centroid Distance\n", round(euclidean_cluster_distance, 2), " units\n", round(angle_degrees, 2), "°")
+  )
 
 # Layout
 fig <- fig %>%
   layout(
+    title = "RGB Color Space: Customized Points, Clusters & Centroids",
     scene = list(
       xaxis = list(title = "Red", range = c(0, 255)),
       yaxis = list(title = "Green", range = c(0, 255)),
       zaxis = list(title = "Blue", range = c(0, 255))
-    ),
-    title = "RGB Color Space with Species Clusters & Centroid Metrics"
+    )
   )
 
+# Show plot
 fig
