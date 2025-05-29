@@ -1,0 +1,60 @@
+# Install packages if not already installed
+if (!requireNamespace("RImageJROI", quietly = TRUE)) {
+  install.packages("devtools")
+  devtools::install_github("beckyfisher/RImageJROI")
+}
+
+library(imager)
+library(RImageJROI)
+library(colorspace)
+library(sp)  # For point.in.polygon()
+
+# Load your image (adjust path)
+img_path <- "C:/Users/vibha/Documents/Jungle owlet/Jungle owlet/Standadised_Jungle Owlet_Dec'24-20250520T050219Z-1-001/Standadised_Jungle Owlet_Dec_24/IMG_1647.jpg"
+img <- load.image(img_path)
+
+# Convert image to HSV
+img_hsv <- RGBtoHSV(img)
+
+# Load ROI zip file exported from ImageJ
+roi_zip_path <- "C:/Users/vibha/OneDrive/Desktop/Jungle owlet.zip"
+rois <- read.ijzip(roi_zip_path)  # list of ROI polygons
+
+# Get image dimensions
+img_dim <- dim(img)  # [x,y,channels,frames]
+
+# Prepare to store mean HSV per ROI
+mean_hsv_list <- list()
+
+for(i in seq_along(rois)) {
+  roi <- rois[[i]]
+  
+  # roi is a list with polygon x and y coordinates
+  poly_x <- roi$coords$x
+  poly_y <- roi$coords$y
+  
+  # Generate grid of all pixel coords
+  x_coords <- rep(1:img_dim[1], times = img_dim[2])
+  y_coords <- rep(1:img_dim[2], each = img_dim[1])
+  
+  # Determine which pixels fall inside polygon
+  inside <- point.in.polygon(x_coords, y_coords, poly_x, poly_y)
+  mask <- matrix(inside > 0, nrow = img_dim[1], ncol = img_dim[2])
+  
+  # Extract HSV pixels inside ROI
+  hue_vals <- img_hsv[,,1,1][mask]
+  chroma_vals <- img_hsv[,,2,1][mask]
+  value_vals <- img_hsv[,,3,1][mask]
+  
+  # Calculate mean HSV (Hue scaled to degrees)
+  mean_hue <- mean(hue_vals, na.rm = TRUE) * 360
+  mean_chroma <- mean(chroma_vals, na.rm = TRUE)
+  mean_value <- mean(value_vals, na.rm = TRUE)
+  
+  mean_hsv_list[[i]] <- c(mean_hue, mean_chroma, mean_value)
+  
+  cat(sprintf("ROI %d mean HSV: Hue=%.2f°, Chroma=%.3f, Value=%.3f\n",
+              i, mean_hue, mean_chroma, mean_value))
+}
+
+# Now mean_hsv_list holds mean HSV for all ROIs, ready for further processing!
