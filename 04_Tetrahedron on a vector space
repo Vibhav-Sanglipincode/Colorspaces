@@ -8,42 +8,51 @@ vertices <- data.frame(
   z = c(1, -1, 1, -1)
 )
 
-# Normalize for plotting
+# Normalize vertices for plotting
 normalize <- function(v) v / sqrt(sum(v^2))
 vertices[, c("x", "y", "z")] <- t(apply(vertices[, c("x", "y", "z")], 1, normalize))
 
-# Example quantum catches and tetrahedral coordinates (replace with your real data)
-tcs_data <- data.frame(
-  region = c("A", "B", "C", "D", "A*", "B*", "C*", "D*"),
-  x = c(0.2, 0.1, 0.05, 0.15, -0.2, -0.1, -0.15, -0.05),
-  y = c(0.2, 0.15, 0.1, 0.05, -0.2, -0.15, -0.1, -0.05),
-  z = c(0.1, 0.05, 0.15, 0.2, -0.1, -0.05, -0.15, -0.2),
-  u = c(0.01, 0.02, 0.015, 0.01, 0.0, 0.0, 0.0, 0.0),
-  s = c(0.3, 0.28, 0.31, 0.32, 0.25, 0.23, 0.21, 0.22),
-  m = c(0.4, 0.38, 0.37, 0.35, 0.39, 0.4, 0.41, 0.42),
-  l = c(0.29, 0.32, 0.28, 0.32, 0.36, 0.37, 0.38, 0.36),
-  species = c(rep("G. radiatum", 4), rep("G. malabaricum", 4))
+# Your new RGB data (G. radiatum)
+radiatum_data <- data.frame(
+  region = c("A", "B", "C", "D"),
+  R = c(116.635, 61.418, 83.765, 131.795),
+  G = c(106.597, 51.153, 99.267, 125.317),
+  B = c(83.765, 36.063, 70.007, 114.098),
+  species = "G. radiatum"
 )
 
-# Print the u,s,m,l quantum catches to console
-cat("Quantum catches (u, s, m, l) for each region:\n")
-print(tcs_data[, c("region", "u", "s", "m", "l")])
+# New RGB data (G. malabaricum)
+malabaricum_data <- data.frame(
+  region = c("A*", "B*", "C*", "D*"),
+  R = c(99.673, 51.289, 62.415, 133.424),
+  G = c(86.273, 40.197, 27.655, 128.550),
+  B = c(62.415, 58.929, 38.474, 120.864),
+  species = "G. malabaricum"
+)
+
+# Combine datasets
+rgb_data <- rbind(radiatum_data, malabaricum_data)
+
+# Normalize RGB to 0-1 range for plotting (optional, just to scale coordinates)
+max_val <- max(rgb_data[, c("R","G","B")])
+rgb_data$x <- rgb_data$R / max_val
+rgb_data$y <- rgb_data$G / max_val
+rgb_data$z <- rgb_data$B / max_val
+
+# Create hover text
+rgb_data$hover_text <- paste0(
+  "Region: ", rgb_data$region, "<br>",
+  "Species: ", rgb_data$species, "<br>",
+  "R: ", round(rgb_data$R, 2), "<br>",
+  "G: ", round(rgb_data$G, 2), "<br>",
+  "B: ", round(rgb_data$B, 2)
+)
 
 # Colors for species
 colors <- c("G. radiatum" = "blue", "G. malabaricum" = "red")
-tcs_data$color <- colors[tcs_data$species]
+rgb_data$color <- colors[rgb_data$species]
 
-# Create hover text including u,s,m,l
-tcs_data$hover_text <- paste0(
-  "Region: ", tcs_data$region, "<br>",
-  "Species: ", tcs_data$species, "<br>",
-  "u: ", round(tcs_data$u, 3), "<br>",
-  "s: ", round(tcs_data$s, 3), "<br>",
-  "m: ", round(tcs_data$m, 3), "<br>",
-  "l: ", round(tcs_data$l, 3)
-)
-
-# Custom region descriptions for legend box
+# Region descriptions for legend
 region_descriptions <- c(
   "A: Moustachial stipe and breast",
   "B: Barred belly",
@@ -89,9 +98,9 @@ fig <- fig %>% add_trace(
   name = "Cones"
 )
 
-# Add data points with hover info showing u,s,m,l
+# Add RGB data points with hover info
 fig <- fig %>% add_trace(
-  data = tcs_data,
+  data = rgb_data,
   x = ~x, y = ~y, z = ~z,
   type = 'scatter3d',
   mode = 'markers+text',
@@ -107,11 +116,11 @@ fig <- fig %>% add_trace(
 # Add custom annotation box outside the plot area for region descriptions
 fig <- fig %>% layout(
   scene = list(
-    xaxis = list(title = "x (color vector)"),
-    yaxis = list(title = "y (color vector)"),
-    zaxis = list(title = "z (color vector)")
+    xaxis = list(title = "Normalized R"),
+    yaxis = list(title = "Normalized G"),
+    zaxis = list(title = "Normalized B")
   ),
-  title = "Interactive Tetrahedral Avian Color Space with Quantum Catches",
+  title = "Interactive RGB Color Space for G. radiatum and G. malabaricum",
   legend = list(title = list(text = "Species")),
   annotations = list(
     list(
