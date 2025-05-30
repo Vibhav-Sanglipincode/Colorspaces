@@ -1,0 +1,129 @@
+library(plotly)
+
+# G. radiatum data
+radiatum_data <- data.frame(
+  region = c("A", "B", "C", "D"),
+  R = c(116.635, 61.418, 83.765, 131.795),
+  G = c(106.597, 51.153, 99.267, 125.317),
+  B = c(83.765, 36.063, 70.007, 114.098),
+  species = "G. radiatum"
+)
+
+# G. malabaricum data
+malabaricum_data <- data.frame(
+  region = c("A*", "B*", "C*", "D*"),
+  R = c(99.673, 51.289, 62.415, 133.424),
+  G = c(86.273, 40.197, 27.655, 128.550),
+  B = c(62.415, 58.929, 38.474, 120.864),
+  species = "G. malabaricum"
+)
+
+# Combine
+rgb_data <- rbind(radiatum_data, malabaricum_data)
+
+# Normalize each R, G, B channel independently
+rgb_data$R_norm <- rgb_data$R / 255
+rgb_data$G_norm <- rgb_data$G / 255
+rgb_data$B_norm <- rgb_data$B / 255
+
+# Hover info
+rgb_data$hover_text <- paste0(
+  "Region: ", rgb_data$region, "<br>",
+  "Species: ", rgb_data$species, "<br>",
+  "R: ", round(rgb_data$R_norm, 3),
+  ", G: ", round(rgb_data$G_norm, 3),
+  ", B: ", round(rgb_data$B_norm, 3)
+)
+
+# Colors for legend
+species_colors <- c("G. radiatum" = "blue", "G. malabaricum" = "red")
+
+# Region descriptions
+region_descriptions <- c(
+  "A / A*: Moustachial stripe and breast",
+  "B / B*: Barred belly",
+  "C / C*: Vent",
+  "D / D*: Dorsal side of the bird"
+)
+legend_text <- paste("<b>Region Legend:</b>", paste(region_descriptions, collapse = "<br>"))
+
+# Start plot
+fig <- plot_ly()
+
+# Add each species with correct color and legend
+for (sp in unique(rgb_data$species)) {
+  sp_data <- subset(rgb_data, species == sp)
+  fig <- fig %>% add_trace(
+    data = sp_data,
+    x = ~R_norm, y = ~G_norm, z = ~B_norm,
+    type = 'scatter3d',
+    mode = 'markers+text',
+    text = ~region,
+    textposition = "top center",
+    marker = list(size = 8, color = species_colors[sp]),
+    hoverinfo = 'text',
+    hovertext = ~hover_text,
+    name = sp
+  )
+}
+
+# Layout with region legend
+fig <- fig %>% layout(
+  scene = list(
+    xaxis = list(title = "Red (normalized)", range = c(0, 1)),
+    yaxis = list(title = "Green (normalized)", range = c(0, 1)),
+    zaxis = list(title = "Blue (normalized)", range = c(0, 1))
+  ),
+  title = "Normalized RGB Space: G. radiatum vs G. malabaricum",
+  legend = list(title = list(text = "<b>Species</b>")),
+  annotations = list(
+    list(
+      text = legend_text,
+      xref = "paper", yref = "paper",
+      x = 1.05, y = 0.9,
+      showarrow = FALSE,
+      align = "left",
+      font = list(size = 12),
+      bgcolor = 'rgba(255,255,255,0.8)',
+      bordercolor = 'black',
+      borderwidth = 1
+    )
+  )
+)
+
+fig
+
+
+
+# Combine and normalize again (if not already normalized)
+rgb_data <- rbind(radiatum_data, malabaricum_data)
+rgb_data$R_norm <- rgb_data$R / 255
+rgb_data$G_norm <- rgb_data$G / 255
+rgb_data$B_norm <- rgb_data$B / 255
+
+# Create matrix of normalized RGB coordinates
+rgb_matrix <- as.matrix(rgb_data[, c("R_norm", "G_norm", "B_norm")])
+rownames(rgb_matrix) <- rgb_data$region
+
+# Compute Euclidean distances between all region points
+rgb_distances <- as.matrix(dist(rgb_matrix))
+
+# Round for easier viewing
+rgb_distances <- round(rgb_distances, 4)
+
+# View the distance matrix
+rgb_distances
+
+# Assuming rgb_distances is your distance matrix from before
+
+# Save to a text file
+write.table(
+  rgb_distances, 
+  file = "rgb_distance_matrix.txt", 
+  sep = "\t",        # tab-separated
+  quote = FALSE,     # no quotes around entries
+  col.names = NA     # keep row names
+)
+
+
+save(rgb_distances)
