@@ -1,0 +1,36 @@
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Combine data
+rgb_data <- rbind(radiatum_data, malabaricum_data)
+
+# Calculate mean RGB per row
+rgb_data <- rgb_data %>%
+  mutate(mean_RGB = (R + G + B) / 3)
+
+# Prepare data for bar plots: long format for R, G, B channels
+rgb_long <- rgb_data %>%
+  select(region, species, R, G, B) %>%
+  pivot_longer(cols = c(R, G, B), names_to = "channel", values_to = "value")
+
+# Plot grouped bar chart for R, G, B channels
+p_rgb <- ggplot(rgb_long, aes(x = region, y = value, fill = species)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  facet_wrap(~channel, scales = "free_y") +
+  labs(title = "Comparison of R, G, B values by Region and Species",
+       x = "Region",
+       y = "RGB Value") +
+  theme_minimal()
+
+# Plot mean RGB bar chart
+p_mean <- ggplot(rgb_data, aes(x = region, y = mean_RGB, fill = species)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Mean RGB Value by Region and Species",
+       x = "Region",
+       y = "Mean RGB") +
+  theme_minimal()
+
+# Print plots
+print(p_rgb)
+print(p_mean)
