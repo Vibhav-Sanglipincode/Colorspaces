@@ -1,0 +1,84 @@
+# Load required libraries
+library(ggstatsplot)
+library(patchwork)
+
+# Define data
+malabaricum_data <- data.frame(
+  region = c("A", "B", "C", "D", "E"),
+  R = c(43.781, 39.396, 48.279, 45.930, 44.793),
+  G = c(32.261, 29.065, 35.810, 35.290, 34.025),
+  B = c(20.416, 19.234, 22.656, 23.120, 22.739),
+  species = "G. malabaricum"
+)
+
+radiatum_data <- data.frame(
+  region = c("A*", "B*", "C*", "D*", "E*"),
+  R = c(48.502, 46.602, 49.348, 47.927, 48.042),
+  G = c(38.578, 36.004, 39.295, 36.648, 38.151),
+  B = c(26.355, 23.615, 27.156, 23.692, 26.003),
+  species = "G. radiatum"
+)
+
+# Combine datasets
+rgb_data <- rbind(radiatum_data, malabaricum_data)
+
+# Create plots
+p_r <- ggbetweenstats(
+  data = rgb_data,
+  x = species,
+  y = R,
+  type = "parametric",
+  title = "Red (R) Value Comparison",
+  violin.args = list(fill = "red", alpha = 0.4),
+  point.args = list(alpha = 0.6, size = 3)
+)
+
+p_g <- ggbetweenstats(
+  data = rgb_data,
+  x = species,
+  y = G,
+  type = "parametric",
+  title = "Green (G) Value Comparison",
+  violin.args = list(fill = "green", alpha = 0.4),
+  point.args = list(alpha = 0.6, size = 3)
+)
+
+p_b <- ggbetweenstats(
+  data = rgb_data,
+  x = species,
+  y = B,
+  type = "parametric",
+  title = "Blue (B) Value Comparison",
+  violin.args = list(fill = "blue", alpha = 0.4),
+  point.args = list(alpha = 0.6, size = 3)
+)
+
+# Combine and display plots
+(p_r | p_g | p_b) + plot_annotation(title = "RGB Comparison: G. radiatum vs G. malabaricum")
+
+
+# Add mean RGB value per row
+rgb_data$mean_RGB <- rowMeans(rgb_data[, c("R", "G", "B")])
+
+# Check the updated data
+head(rgb_data)
+
+# Create the mean RGB comparison plot
+library(ggstatsplot)
+
+ggbetweenstats(
+  data = rgb_data,
+  x = species,
+  y = mean_RGB,
+  type = "parametric",
+  title = "Mean RGB Value Comparison: G. radiatum vs G. malabaricum",
+  xlab = "Species",
+  ylab = "Mean RGB Value",
+  violin.args = list(fill = "purple", alpha = 0.4),
+  point.args = list(alpha = 0.6, size = 3)
+)
+
+
+
+
+
