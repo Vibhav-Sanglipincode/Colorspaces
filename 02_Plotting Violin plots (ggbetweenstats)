@@ -3,20 +3,80 @@ library(ggstatsplot)
 library(patchwork)
 
 # Define data
-malabaricum_data <- data.frame(
-  region = c("A", "B", "C", "D", "E"),
-  R = c(43.781, 39.396, 48.279, 45.930, 44.793),
-  G = c(32.261, 29.065, 35.810, 35.290, 34.025),
-  B = c(20.416, 19.234, 22.656, 23.120, 22.739),
-  species = "G. malabaricum"
+radiatum_data <- data.frame(
+  region = c("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"),
+  R = c(0.1180409292,
+        -0.3896829863,
+        0.4154890506,
+        0.2166627699,
+        -0.1060528434,
+        -0.01591422122,
+        -0.213100367,
+        -0.1241973147,
+        -0.001192301141,
+        -0.3525171065,
+        0.5416260954,
+        0.146674811),
+  G = c(0.09750177982,
+        -0.4560058121,
+        0.4141848629,
+        0.1017940409,
+        -0.0464399652,
+        -0.0738014417,
+        -0.2646577807,
+        -0.171348629,
+        -0.02756166486,
+        -0.3244747856,
+        0.4876258043,
+        0.1641062509),
+  B = c(0.03103919215,
+        -0.6076030583,
+        0.4332858408,
+        -0.1017802041,
+        0.1317686573,
+        -0.1277584204,
+        -0.2252068127,
+        -0.1707393765,
+        -0.06828613493,
+        -0.172053407,
+        0.4132935245,
+        0.2729424931),
+  species = "G. radiatum"
 )
 
-radiatum_data <- data.frame(
-  region = c("A*", "B*", "C*", "D*", "E*"),
-  R = c(48.502, 46.602, 49.348, 47.927, 48.042),
-  G = c(38.578, 36.004, 39.295, 36.648, 38.151),
-  B = c(26.355, 23.615, 27.156, 23.692, 26.003),
-  species = "G. radiatum"
+malabaricum_data <- data.frame(
+  region = c("A*", "B*", "C*", "D*", "E*", "F*", "G*", "H*", "I*", "J*"),
+  R = c(-0.04195828667,
+        -0.4464067678,
+        0.09286338258,
+        -0.04492505864,
+        -0.3887242904,
+        0.2899557802,
+        0.01832161535,
+        0.1000345901,
+        0.1129439488,
+        0.142464341),
+  G = c(-0.001355158518,
+        -0.4670483039,
+        0.1654001064,
+        0.002071336841,
+        -0.3363574507,
+        0.2675527411,
+        -0.04627581121,
+        0.08913114338,
+        0.05846803553,
+        0.1047251333),
+  B = c(0.06649593783,
+        -0.4484856165,
+        0.3199072859,
+        0.06998764924,
+        -0.2380249716,
+        0.1621721977,
+        -0.1568617708,
+        0.04865472954,
+        -0.03596258691,
+        0.02169557782),
+  species = "G. malabaricum"
 )
 
 # Combine datasets
@@ -54,7 +114,7 @@ p_b <- ggbetweenstats(
 )
 
 # Combine and display plots
-(p_r | p_g | p_b) + plot_annotation(title = "RGB Comparison: G. radiatum vs G. malabaricum")
+(p_r | p_g | p_b) + plot_annotation(title = "RGB Comparison for Belly + Vent: G. radiatum vs G. malabaricum")
 
 
 # Add mean RGB value per row
@@ -71,7 +131,7 @@ ggbetweenstats(
   x = species,
   y = mean_RGB,
   type = "parametric",
-  title = "Mean RGB Value Comparison: G. radiatum vs G. malabaricum",
+  title = "Mean RGB Value Comparison for Belly + Vent: G. radiatum vs G. malabaricum",
   xlab = "Species",
   ylab = "Mean RGB Value",
   violin.args = list(fill = "purple", alpha = 0.4),
