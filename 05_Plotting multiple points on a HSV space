@@ -1,0 +1,30 @@
+# Load required libraries
+library(plotly)
+library(readr)
+
+# Read the HSV CSV file
+# Your CSV should have columns: region, species, Hue, Saturation, Value
+hsv_data <- read_csv("C:/Users/vibha/Downloads/Glaucidium Plumage analysis - Plottable RGB & HSV values (norm = _255.csv")
+
+# Plot HSV values in 3D space
+plot_ly(data = hsv_data) %>%
+  add_markers(
+    x = ~Hue, y = ~Saturation, z = ~Value,
+    color = ~Subspecie,
+    symbol = ~Region,
+    text = ~paste("Region:", Region, "<br>Subspecie:", Subspecie,
+                  "<br>Hue:", round(Hue, 2),
+                  "<br>Saturation:", round(Saturation, 2),
+                  "<br>Value:", round(Value, 2)),
+    hoverinfo = 'text'
+  ) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Hue"),
+      yaxis = list(title = "Saturation"),
+      zaxis = list(title = "Value")
+    ),
+    title = "HSV Color Space by Region and Species"
+  )
+
+
