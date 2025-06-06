@@ -1,0 +1,62 @@
+# Load required libraries
+library(plotly)
+library(readr)
+library(dplyr)
+
+# Read the HSV CSV file
+# Your CSV should have columns: region, species, Hue, Saturation, Value
+hsv_data <- read_csv("C:/Users/vibha/Downloads/Glaucidium Plumage analysis - Plottable RGB & HSV values (norm = _255 (2).csv")
+
+# Plot HSV values in 3D space
+plot_ly(data = hsv_data) %>%
+  add_markers(
+    x = ~Hue, y = ~Saturation, z = ~Value,
+    color = ~Subspecie,
+    symbol = ~Region,
+    text = ~paste("Region:", Region, "<br>Subspecie:", Subspecie,
+                  "<br>Hue:", round(Hue, 2),
+                  "<br>Saturation:", round(Saturation, 2),
+                  "<br>Value:", round(Value, 2)),
+    hoverinfo = 'text'
+  ) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Hue"),
+      yaxis = list(title = "Saturation"),
+      zaxis = list(title = "Value")
+    ),
+    title = "HSV Color Space by Region and Species"
+  )
+
+
+# Load your HSV data (assumes your CSV has Hue (0–360), Saturation (0–1), Value (0–1))
+df <- read_csv("C:/Users/vibha/Downloads/Glaucidium Plumage analysis - Plottable RGB & HSV values (norm = _255 (2).csv")
+
+# Convert Hue from degrees to radians
+df <- df %>%
+  mutate(
+    Hue_rad = Hue * pi / 180,
+    x = Saturation * sin(Hue_rad),
+    y = Saturation * cos(Hue_rad),
+    z = Value
+  )
+
+# Plot idf, x = ~x, y = ~y, z = ~z,
+plot_ly(df, x = ~x, y = ~y, z = ~z,
+        type = 'scatter3d', mode = 'markers',
+        color = ~Subspecie,
+        symbol = ~Region,
+        text = ~paste("Label:", Label, "<br>Region:", Region, "<br>Subspecie:", Subspecie),
+        hoverinfo = "text",
+        marker = list(size = 4)) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Saturation · sin(Hue)"),
+      yaxis = list(title = "Saturation · cos(Hue)"),
+      zaxis = list(title = "Value")
+    ),
+    title = "HSV Color Space (Spherical) by Subspecie"
+  )
+
+
+
