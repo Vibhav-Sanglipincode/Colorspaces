@@ -1,0 +1,56 @@
+# Load necessary package
+library(dplyr)
+
+# Function to convert RGB (0-255) to HSV
+rgb_to_hsv <- function(r, g, b) {
+  # Normalize RGB
+  r <- r / 255
+  g <- g / 255
+  b <- b / 255
+  
+  max_val <- pmax(r, g, b)
+  min_val <- pmin(r, g, b)
+  delta <- max_val - min_val
+  
+  # Value
+  v <- max_val
+  
+  # Saturation
+  s <- ifelse(max_val == 0, 0, delta / max_val)
+  
+  # Hue calculation
+  h <- numeric(length(r))
+  
+  zero_delta <- delta == 0
+  h[zero_delta] <- 0  # If no color difference, hue = 0
+  
+  # For others
+  idx_r <- (!zero_delta) & (max_val == r)
+  idx_g <- (!zero_delta) & (max_val == g)
+  idx_b <- (!zero_delta) & (max_val == b)
+  
+  h[idx_r] <- 60 * (((g[idx_r] - b[idx_r]) / delta[idx_r]) %% 6)
+  h[idx_g] <- 60 * (((b[idx_g] - r[idx_g]) / delta[idx_g]) + 2)
+  h[idx_b] <- 60 * (((r[idx_b] - g[idx_b]) / delta[idx_b]) + 4)
+  
+  # Make sure hue is in [0, 360)
+  h <- ifelse(h < 0, h + 360, h)
+  
+  # Return as data frame or tibble
+  tibble(Hue = h, Saturation = s, Value = v)
+}
+
+# Read your CSV (update path accordingly)
+df <- read.csv("C:/Users/vibha/Downloads/Glaucidium Plumage analysis - Plottable RGB & HSV values (norm = _255 (1).csv")
+
+# Convert each RGB row to HSV and bind results
+hsv_vals <- rgb_to_hsv(df$Red, df$Green, df$Blue)
+
+# Bind new columns to original dataframe
+df_hsv <- bind_cols(df, hsv_vals)
+
+# View first few rows
+head(df_hsv)
+
+# Save to a new CSV if you want
+write.csv(df_hsv, "your_data_with_hsv.csv", row.names = FALSE)
