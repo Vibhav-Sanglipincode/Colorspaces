@@ -1,0 +1,32 @@
+#Give the tbale in the format of columns like Label|Mean
+library(tidyverse)
+library(dplyr)
+
+# Step 1: Read your CSV file (replace path with your actual file)
+df <- read_csv("C:/Users/vibha/Downloads/Indian Black Bird Plumage - Sheet4.csv")
+
+# Step 2: Extract image, color, and region
+df_clean <- df %>%
+  mutate(
+    image  = str_extract(Label, "IMG_\\d+"),                # Extract image ID
+    color  = str_extract(Label, "(?<=\\().+?(?=\\))"),      # Extract color (red, green, blue)
+    region = str_extract(Label, "(?<=:).*")                 # Extract region name after colon
+  ) %>%
+  select(image, region, color, Mean)
+
+# Step 3: Pivot to wide format
+df_wide <- df_clean %>%
+  pivot_wider(names_from = color, values_from = Mean)
+
+# Step 4: View or export
+print(df_wide)
+
+# Define a safe folder path
+output_path <- "C:/Users/vibha/Documents/Jungle owlet/Jungle owlet/Colorspace/df_wide.csv"
+
+
+
+# Save the df_wide to CSV
+write_csv(df_wide, output_path)
+
+
