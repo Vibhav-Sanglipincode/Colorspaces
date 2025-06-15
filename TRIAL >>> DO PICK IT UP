@@ -1,0 +1,105 @@
+# --- Load libraries ---
+library(tidyverse)
+library(plotly)
+
+# --- Read the CSV file ---
+# Replace with your actual file path
+df <- read_csv("C:/Users/vibha/Downloads/Indian Black Bird Plumage - RGB + HSV Values.csv")
+
+# --- Normalize RGB for position ---
+df <- df %>%
+  mutate(
+    R_norm = Red / 255,
+    G_norm = Green / 255,
+    B_norm = Blue / 255,
+    H_norm = Hue / 360  # hue needs to be between 0 and 1
+  )
+
+# --- Convert HSV to color for display ---
+df$color <- hsv(df$H_norm, df$Saturation, df$Value)
+
+# --- Define cube corners and edges ---
+cube_edges <- expand.grid(x = c(0,1), y = c(0,1), z = c(0,1))
+edges <- combn(1:8, 2, simplify = FALSE)
+edges <- edges[sapply(edges, function(e) sum(abs(cube_edges[e[1], ] - cube_edges[e[2], ])) == 1)]
+
+# --- Start the plot ---
+p <- plot_ly(type = "scatter3d", mode = "lines") %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Red", range = c(0, 1), titlefont = list(size = 18, color = 'red')),
+      yaxis = list(title = "Green", range = c(0, 1), titlefont = list(size = 18, color = 'green')),
+      zaxis = list(title = "Blue", range = c(0, 1), titlefont = list(size = 18, color = 'blue')),
+      aspectmode = "cube"
+    )
+  )
+
+# --- Add RGB cube edges ---
+for (e in edges) {
+  p <- add_trace(
+    p,
+    x = cube_edges[e, "x"],
+    y = cube_edges[e, "y"],
+    z = cube_edges[e, "z"],
+    type = "scatter3d",
+    mode = "lines",
+    line = list(color = "gray", width = 2),
+    showlegend = FALSE
+  )
+}
+
+# --- Add points colored by HSV ---
+p <- p %>%
+  add_trace(
+    x = df$R_norm,
+    y = df$G_norm,
+    z = df$B_norm,
+    type = "scatter3d",
+    mode = "markers",
+    marker = list(size = 4, color = df$color),
+    name = "Plumage Colors"
+  )
+
+# --- Show the plot ---
+p
+
+# --- Load geometry for convex hull ---
+library(geometry)
+
+# --- Assign cluster labels ---
+df <- df %>%
+  mutate(
+    cluster = case_when(
+      Subspecie %in% c("Nigropileus", "Spencei") ~ "Cluster 1",
+      Subspecie %in% c("Similimus", "Bourdilloni") ~ "Cluster 2",
+      TRUE ~ "Other"
+    )
+  )
+
+# --- Convex hull function ---
+# --- Convex hull mesh helper ---
+add_hull <- function(df_hull, name, hull_color) {
+  points <- df_hull[, c("R_norm", "G_norm", "B_norm")] |> as.matrix()
+  
+  if (nrow(points) >= 4) {
+    hull_faces <- convhulln(points, options = "FA")  # returns matrix of indices (i, j, k)
+    
+    p <<- add_trace(
+      p,
+      type = "mesh3d",
+      x = points[,1],
+      y = points[,2],
+      z = points[,3],
+      i = hull_faces[,1] - 1,  # plotly uses 0-based indexing
+      j = hull_faces[,2] - 1,
+      k = hull_faces[,3] - 1,
+      facecolor = rep(hull_color, nrow(hull_faces)),
+      opacity = 0.3,
+      name = name,
+      showscale = FALSE
+    )
+  }
+}
+
+p
+
