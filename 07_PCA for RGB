@@ -1,40 +1,64 @@
-# Load libraries
 library(tidyverse)
 library(ggfortify)
 library(patchwork)
+library(ggforce)  # for stat_ellipse and smoother shapes
 
-# Step 1: Load data
-data <- read.csv("C:/Users/vibha/Downloads/Indian Black Bird Plumage - RGB + HSV Values.csv")  # replace with actual path
+# Load your data
+data <- read.csv("C:/Users/vibha/Downloads/Indian Black Bird Plumage - RGB + HSV Values.csv")
 
-# Step 2: Define your custom color palette
+# Define custom colors
 custom_colors <- c(
   "Nigropileus"  = "#84BD00",
   "Bourdilloni"  = "#CC0C00",
-  "Simillimus"   = "#5C88DA",
+  "Similimus"   = "#5C88DA",
   "Spencei"      = "#7C878EFF",
   "Kinnisii"     = "#FFCD00"
 )
 
-# Step 3: Function to run PCA per Region
+# PCA plot function per region
 run_rgb_pca_plot <- function(df, region_name) {
   df_sub <- df %>%
     filter(Region == region_name) %>%
-    mutate(Subspecie = str_to_title(Subspecie))  # Ensuring title case matches palette keys
+    mutate(Subspecie = str_to_title(Subspecie))
   
   pca <- prcomp(df_sub[, c("Red", "Green", "Blue")], scale. = TRUE)
+  df_scores <- as.data.frame(pca$x)
+  df_scores$Subspecie <- df_sub$Subspecie
   
-  autoplot(pca,
-           data = df_sub,
-           colour = "Subspecie",
-           #shape = "Subspecie",
-           size = 4,
-           alpha = 0.8) +
-    labs(title = paste("PCA of RGB -", region_name)) +
+  # Base plot
+  base_plot <- ggplot(df_scores, aes(x = PC1, y = PC2, color = Subspecie)) +
+    geom_point(size = 4, alpha = 0.8) +
     scale_color_manual(values = custom_colors) +
+    labs(title = paste("2D Projection of RGB colorspace -", region_name)) +
     theme_minimal()
+  
+  # Add ellipses (≥3 points) and convex hulls (2 points)
+  cluster_layers <- df_scores %>%
+    group_by(Subspecie) %>%
+    group_split() %>%
+    map(function(group_data) {
+      n_points <- nrow(group_data)
+      if (n_points >= 3) {
+        stat_ellipse(data = group_data,
+                     aes(x = PC1, y = PC2, color = Subspecie),
+                     type = "norm", level = 0.7, show.legend = FALSE)
+      } else if (n_points == 2) {
+        geom_polygon(data = group_data[chull(group_data$PC1, group_data$PC2), ],
+                     aes(x = PC1, y = PC2, fill = Subspecie),
+                     color = NA, alpha = 0.15, show.legend = FALSE) +
+          scale_fill_manual(values = custom_colors)
+      } else {
+        NULL
+      }
+    })
+  
+  # Combine all layers
+  reduce(cluster_layers, `+`, .init = base_plot)
 }
 
-# Step 4: Generate plots per region and combine
+# Apply across all regions
 regions <- unique(data$Region)
 p_list <- map(regions, ~run_rgb_pca_plot(data, .x))
+
+# Combine and show
 wrap_plots(p_list, ncol = 1) + plot_layout(guides = "collect")
