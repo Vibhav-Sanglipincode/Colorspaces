@@ -15,9 +15,19 @@ df <- df %>%
   )
 
 
-df_crown <- df %>%
+df_Mantle_Scapular_Back <- df %>%
   filter(Region == "Mantle_Scapular_Back")
 
+
+# Define base theme adjustments
+base_theme <- theme(
+  plot.title = element_text(size = 16),
+  axis.title = element_text(size = 14),
+  axis.text = element_text(size = 12),
+  legend.text = element_text(size = 12),
+  legend.title = element_text(size = 12),
+  strip.text = element_text(size = 14)
+)
 
 # Red
 p_r <- ggbetweenstats(
@@ -27,7 +37,9 @@ p_r <- ggbetweenstats(
   title = "Red Comparison - Mantle_Scapular_Back",
   type = "parametric",
   violin.args = list(fill = "red", alpha = 0.4),
-  point.args = list(size = 3, alpha = 0.6)
+  point.args = list(size = 3, alpha = 0.6),
+  ggtheme = theme_minimal(),
+  theme.args = list(base_theme)
 )
 
 # Green
@@ -38,7 +50,9 @@ p_g <- ggbetweenstats(
   title = "Green Comparison - Mantle_Scapular_Back",
   type = "parametric",
   violin.args = list(fill = "green", alpha = 0.4),
-  point.args = list(size = 3, alpha = 0.6)
+  point.args = list(size = 3, alpha = 0.6),
+  ggtheme = theme_minimal(),
+  theme.args = list(base_theme)
 )
 
 # Blue
@@ -49,7 +63,9 @@ p_b <- ggbetweenstats(
   title = "Blue Comparison - Mantle_Scapular_Back",
   type = "parametric",
   violin.args = list(fill = "blue", alpha = 0.4),
-  point.args = list(size = 3, alpha = 0.6)
+  point.args = list(size = 3, alpha = 0.6),
+  ggtheme = theme_minimal(),
+  theme.args = list(base_theme)
 )
 
 # Mean RGB
@@ -60,7 +76,9 @@ p_mean <- ggbetweenstats(
   title = "Mean RGB Comparison - Mantle_Scapular_Back",
   type = "parametric",
   violin.args = list(fill = "purple", alpha = 0.4),
-  point.args = list(size = 3, alpha = 0.6)
+  point.args = list(size = 3, alpha = 0.6),
+  ggtheme = theme_minimal(),
+  theme.args = list(base_theme)
 )
 
 
