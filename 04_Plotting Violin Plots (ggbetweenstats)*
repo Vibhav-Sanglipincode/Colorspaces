@@ -1,0 +1,81 @@
+library(tidyverse)
+library(ggstatsplot)
+library(patchwork)
+
+# Load your data
+df <- read_csv("C:/Users/vibha/Downloads/Indian Black Bird Plumage - FEMALE + MALE, HSV + RGB.csv")
+
+# Clean and mutate
+df <- df %>%
+  mutate(
+    Subspecie = str_trim(str_to_title(Subspecie)),
+    Region = str_trim(Region),
+    Sex = str_trim(str_to_title(Sex)),
+    Subspecie_Sex = paste(Subspecie, Sex, sep = "/"),
+    mean_RGB = rowMeans(across(c(Red, Green, Blue)), na.rm = TRUE)
+  )
+
+# Filter for the region
+df_Mantle_Scapular_Back <- df %>% filter(Region == "Mantle_Scapular_Back")
+
+# Red
+p_r <- ggbetweenstats(
+  data = df_Mantle_Scapular_Back,
+  x = Subspecie_Sex,
+  y = Red,
+  title = "Red Comparison - Mantle_Scapular_Back",
+  type = "parametric",
+  violin.args = list(fill = "red", alpha = 0.4),
+  point.args = list(size = 3, alpha = 0.6),
+  ggtheme = theme_minimal(),
+  xlab = NULL
+) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+
+# Green
+p_g <- ggbetweenstats(
+  data = df_Mantle_Scapular_Back,
+  x = Subspecie_Sex,
+  y = Green,
+  title = "Green Comparison - Mantle_Scapular_Back",
+  type = "parametric",
+  violin.args = list(fill = "green", alpha = 0.4),
+  point.args = list(size = 3, alpha = 0.6),
+  ggtheme = theme_minimal(),
+  xlab = NULL
+) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+
+# Blue
+p_b <- ggbetweenstats(
+  data = df_Mantle_Scapular_Back,
+  x = Subspecie_Sex,
+  y = Blue,
+  title = "Blue Comparison - Mantle_Scapular_Back",
+  type = "parametric",
+  violin.args = list(fill = "blue", alpha = 0.4),
+  point.args = list(size = 3, alpha = 0.6),
+  ggtheme = theme_minimal(),
+  xlab = NULL
+) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+# Mean RGB
+p_mean <- ggbetweenstats(
+  data = df_mantle,
+  x = SubSex,
+  y = mean_RGB,
+  title = "Mean RGB Comparison - Mantle_Scapular_Back",
+  type = "parametric",
+  violin.args = list(fill = "purple", alpha = 0.4),
+  point.args = list(size = 3, alpha = 0.6),
+  ggtheme = theme_minimal(),
+  xlab = NULL,
+)
+  theme.args = list(
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  )
+)
+
+# Combine plots
+(p_r | p_g | p_b) +
+  plot_annotation(title = "RGB & Mean RGB Comparisons for Region: Mantle_Scapular_Back by Subspecies and Sex")
