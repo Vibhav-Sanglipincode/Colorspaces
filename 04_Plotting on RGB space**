@@ -1,0 +1,72 @@
+# Load libraries
+library(tidyverse)
+library(plotly)
+library(htmlwidgets)
+
+# Step 1: Load your CSV
+rgb_data <- read.csv("C:/Users/vibha/Downloads/Indian Black Bird Plumage - FEMALE + MALE, HSV + RGB (1).csv")
+
+# Step 2: Normalize RGB and create group label
+rgb_data <- rgb_data %>%
+  mutate(
+    R_norm = Red / 255,
+    G_norm = Green / 255,
+    B_norm = Blue / 255,
+    Group_Label = paste(Subspecie, Region, Sex, sep = "_")
+  )
+
+# Step 3: Define fixed color palette by Subspecie
+subspecie_colors <- c(
+  "Nigropileus"  = "#84BD00",
+  "Bourdilloni"  = "#CC0C00",
+  "Simillimus"   = "#5C88DA",
+  "Spencei"      = "#7C878EFF",
+  "Kinnisii"     = "#FFCD00"
+)
+
+# Step 4: Create plot
+p <- plot_ly()
+
+# Step 5: Loop through unique group labels and plot with correct Subspecie color
+group_levels <- unique(rgb_data$Group_Label)
+
+for (group in group_levels) {
+  sub_data <- rgb_data %>% filter(Group_Label == group)
+  shape <- ifelse(unique(sub_data$Sex) == "Male", "square", "circle")
+  specie <- unique(sub_data$Subspecie)
+  group_color <- subspecie_colors[specie]  # assign color based on Subspecie
+  
+  p <- add_trace(
+    p,
+    data = sub_data,
+    x = ~R_norm, y = ~G_norm, z = ~B_norm,
+    type = "scatter3d", mode = "markers",
+    marker = list(symbol = shape, size = 5, color = group_color),
+    text = ~paste("Image:", Image,
+                  "<br>Region:", Region,
+                  "<br>Sex:", Sex,
+                  "<br>Species:", Subspecie),
+    hoverinfo = "text",
+    name = group,
+    showlegend = TRUE
+  )
+}
+
+# Step 6: Layout
+p <- p %>%
+  layout(
+    title = "RGB Color Space by Subspecie_Region_Sex",
+    scene = list(
+      xaxis = list(title = "Red (normalized)"),
+      yaxis = list(title = "Green (normalized)"),
+      zaxis = list(title = "Blue (normalized)")
+    ),
+    legend = list(title = list(text = "<b>Group</b>"))
+  )
+
+# Step 7: Show plot
+p
+
+# Step 8: Save
+saveWidget(p, "Figs/Fig-RGB-ColorSpace_CleanLegend.html")
+
