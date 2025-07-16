@@ -1,0 +1,91 @@
+library(tidyverse)
+library(ggstatsplot)
+library(patchwork)
+library(ggplot2)
+
+# Load aggplot2# Load and preprocess your data
+df <- read_csv("C:/Users/vibha/Downloads/Plumage - Indian White-eye - Wide format RGB + HSV.csv")
+
+df <- df %>%
+  mutate(
+    Subspecie = str_trim(str_to_title(Subspecie)),
+    Region = str_trim(Region),
+    mean_RGB = rowMeans(across(c(Red, Green, Blue)), na.rm = TRUE)
+  )
+
+# Function to generate RGB plots for a given region
+plot_rgb_comparisons <- function(region_name) {
+  region_df <- df %>% filter(Region == region_name)
+  
+  base_theme <- theme(
+    plot.title = element_text(size = 16),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 12),
+    strip.text = element_text(size = 14)
+  )
+  
+  p_r <- ggbetweenstats(
+    data = region_df,
+    x = Subspecie,
+    y = Red,
+    title = paste("Red -", region_name),
+    type = "parametric",
+    violin.args = list(fill = "red", alpha = 0.4),
+    point.args = list(size = 3, alpha = 0.6),
+    ggtheme = theme_minimal(),
+    theme.args = list(base_theme)
+  )
+  
+  p_g <- ggbetweenstats(
+    data = region_df,
+    x = Subspecie,
+    y = Green,
+    title = paste("Green -", region_name),
+    type = "parametric",
+    violin.args = list(fill = "green", alpha = 0.4),
+    point.args = list(size = 3, alpha = 0.6),
+    ggtheme = theme_minimal(),
+    theme.args = list(base_theme)
+  )
+  
+  p_b <- ggbetweenstats(
+    data = region_df,
+    x = Subspecie,
+    y = Blue,
+    title = paste("Blue -", region_name),
+    type = "parametric",
+    violin.args = list(fill = "blue", alpha = 0.4),
+    point.args = list(size = 3, alpha = 0.6),
+    ggtheme = theme_minimal(),
+    theme.args = list(base_theme)
+  )
+  
+  p_mean <- ggbetweenstats(
+    data = region_df,
+    x = Subspecie,
+    y = mean_RGB,
+    title = paste("Mean RGB -", region_name),
+    type = "parametric",
+    violin.args = list(fill = "purple", alpha = 0.4),
+    point.args = list(size = 3, alpha = 0.6),
+    ggtheme = theme_minimal(),
+    theme.args = list(base_theme)
+  )
+  
+  # Return patchworked block
+  (p_r | p_g | p_b)
+}
+
+# Apply the function to all desired regions
+regions <- c("Ventral", "Belly+Breast", "Crest", "Throat")
+plot_list <- map(regions, plot_rgb_comparisons)
+
+# Combine all region plots
+final_plot <- wrap_plots(plot_list, ncol = 1) +
+  plot_annotation(title = "RGB and Mean RGB Comparisons Across Regions")
+
+# Display all plots
+print(final_plot)
+ggsave("RGB_MeanRGB_Comparison_AllRegions.pdf", final_plot, width = 16, height = 24)
