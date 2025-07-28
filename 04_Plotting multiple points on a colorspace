@@ -1,48 +1,82 @@
 # Load libraries
 library(tidyverse)
 library(plotly)
-library(viridisLite)
 library(htmlwidgets)
 
-# Step 1: Load your CSV
-rgb_data <- read.csv("C:/Users/vibha/Downloads/Glaucidium Plumage analysis - Plottable RGB & HSV values (norm = _255.csv")  # <-- Replace with your actual file path
+# Load data
+rgb_data <- read.csv("C:/Users/vibha/Downloads/Colorspace - Blackbird_female.csv")
 
-# Step 2: Normalize RGB values to [0,1]
+# Normalize RGB
 rgb_data <- rgb_data %>%
   mutate(
     R_norm = Red / 255,
     G_norm = Green / 255,
-    B_norm = Blue / 255
+    B_norm = Blue / 255,
+    Group = paste(Subspecie, Region, sep = "_")  # New group label
   )
 
-# Step 3: Map species to viridis colors
-species_unique <- unique(rgb_data$Subspecie)
-species_colors <- viridis(length(species_unique))
-names(species_colors) <- species_unique
+# Define subspecie color palette
+custom_colors <- c("Nigropileus" = "#84BD00",
+                   "Bourdilloni" = "#CC0C00",
+                   "Simillimus" = "#5C88DA",
+                   "Spencei" = "#7C878EFF",
+                   "Kinnisii" = "#FFCD00")
 
-# Step 4: Plot 3D color space using plotly
-plot_ly(data = rgb_data) %>%
-  add_markers(
-    x = ~R_norm, y = ~G_norm, z = ~B_norm,
-    color = ~Subspecie,
-    colors = species_colors,
-    symbol = ~Region,
-    text = ~paste("Label:", Label,
+# Split data by Subspecie_Region group
+group_split <- split(rgb_data, rgb_data$Group)
+
+# Start plot
+p <- plot_ly()
+
+# Add trace for each group
+for (grp in names(group_split)) {
+  group_data <- group_split[[grp]]
+  spp <- unique(group_data$Subspecie)
+  
+  p <- add_trace(
+    p,
+    data = group_data,
+    x = ~R_norm,
+    y = ~G_norm,
+    z = ~B_norm,
+    type = "scatter3d",
+    mode = "markers",
+    name = grp,  # legend name = "Subspecie_Region"
+    marker = list(
+      size = 5,
+      symbol = "circle",
+      color = custom_colors[spp]
+    ),
+    text = ~paste("🦉", Image,
                   "<br>Region:", Region,
                   "<br>Species:", Subspecie),
-    hoverinfo = "text"
-  ) %>%
+    hoverinfo = "text",
+    showlegend = TRUE
+  )
+}
+
+# Layout
+p <- p %>%
   layout(
     scene = list(
       xaxis = list(title = "Red (normalized)"),
       yaxis = list(title = "Green (normalized)"),
       zaxis = list(title = "Blue (normalized)")
     ),
-    title = "RGB Color Space by Region and Subspecie"
+    title = list(
+      text = "🐦‍⬛ Indian Blackbird (female) RGB Color Space",
+      font = list(
+        family = "Arial Black",
+        size = 20,
+        color = "#2c3e50"
+      ),
+      x = 0.05,
+      xanchor = "left",
+      yanchor = "top"
+    )
   )
 
-# Step 5: Save as interactive HTML
-saveWidget(p, "Figs/Fig-RGB-ColorSpace.html")
+# Show plot
+p
 
-# Optional: Save as static image (if Orca is properly installed)
-# plotly::orca(p, "Figs/Fig-RGB-ColorSpace.jpeg")
+
