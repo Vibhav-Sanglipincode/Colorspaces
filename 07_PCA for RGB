@@ -1,21 +1,29 @@
 library(tidyverse)
 library(ggfortify)
 library(patchwork)
-library(ggforce)  # for stat_ellipse and smoother shapes
+library(ggforce)
+library(ggplot2)
 
 # Load your data
-data <- read.csv("C:/Users/vibha/Downloads/Indian Black Bird Plumage - RGB + HSV Values.csv")
+data <- read.csv("C:/Users/vibha/Downloads/Colorspace - Tawnybellied_babbler.csv")
 
-# Define custom colors
-custom_colors <- c(
-  "Nigropileus"  = "#84BD00",
-  "Bourdilloni"  = "#CC0C00",
-  "Similimus"   = "#5C88DA",
-  "Spencei"      = "#7C878EFF",
-  "Kinnisii"     = "#FFCD00"
+# Custom colors for subspecies
+custom_colors <- c("Abuensis" = "#84BD00",
+                   "Albogularis" = "#CC0C00",
+                   "Hyperythra" = "#5C88DA",
+                   "Navarroi" = "#7C878EFF",
+                   "Phillipsi" = "#FFCD00")
+
+ 
+
+# Custom titles for each region
+custom_titles <- c(
+  "Belly"   = "PCA of RGB Values – Belly + Breast",
+  "Crown"    = "PCA of RGB Values – Crown",
+  "Throat"  = "PCA of RGB Values – Throat"
+  # Add more regions and titles if needed
 )
 
-# PCA plot function per region
 run_rgb_pca_plot <- function(df, region_name) {
   df_sub <- df %>%
     filter(Region == region_name) %>%
@@ -25,14 +33,21 @@ run_rgb_pca_plot <- function(df, region_name) {
   df_scores <- as.data.frame(pca$x)
   df_scores$Subspecie <- df_sub$Subspecie
   
-  # Base plot
   base_plot <- ggplot(df_scores, aes(x = PC1, y = PC2, color = Subspecie)) +
     geom_point(size = 4, alpha = 0.8) +
     scale_color_manual(values = custom_colors) +
-    labs(title = paste("2D Projection of RGB colorspace -", region_name)) +
-    theme_minimal()
+    scale_fill_manual(values = custom_colors) +  # moved here
+    labs(title = custom_titles[[region_name]] %||% region_name) +
+    theme_minimal() +
+    theme(
+      axis.title = element_text(size = 16),
+      axis.text = element_text(size = 14),
+      plot.title = element_text(size = 16, hjust = 0.5),
+      legend.title = element_text(size = 14),
+      legend.text = element_text(size = 12)
+    )
   
-  # Add ellipses (≥3 points) and convex hulls (2 points)
+  # Group-wise layers
   cluster_layers <- df_scores %>%
     group_by(Subspecie) %>%
     group_split() %>%
@@ -43,22 +58,34 @@ run_rgb_pca_plot <- function(df, region_name) {
                      aes(x = PC1, y = PC2, color = Subspecie),
                      type = "norm", level = 0.7, show.legend = FALSE)
       } else if (n_points == 2) {
-        geom_polygon(data = group_data[chull(group_data$PC1, group_data$PC2), ],
-                     aes(x = PC1, y = PC2, fill = Subspecie),
-                     color = NA, alpha = 0.15, show.legend = FALSE) +
-          scale_fill_manual(values = custom_colors)
+        geom_polygon(
+          data = group_data[chull(group_data$PC1, group_data$PC2), ],
+          aes(x = PC1, y = PC2, fill = Subspecie),
+          color = NA, alpha = 0.15, show.legend = FALSE
+        )
       } else {
         NULL
       }
     })
   
-  # Combine all layers
-  reduce(cluster_layers, `+`, .init = base_plot)
+  reduce(compact(cluster_layers), `+`, .init = base_plot)
 }
 
-# Apply across all regions
-regions <- unique(data$Region)
-p_list <- map(regions, ~run_rgb_pca_plot(data, .x))
 
-# Combine and show
-wrap_plots(p_list, ncol = 1) + plot_layout(guides = "collect")
+# Select specific regions
+selected_regions <- c( "Crown", "Throat", "Belly")  # Replace as needed
+
+# Generate PCA plots
+p_list <- map(selected_regions, ~run_rgb_pca_plot(data, .x))
+
+# Combine plots and add main title
+final_plot <- wrap_plots(p_list, ncol = 1) +
+  plot_layout(guides = "collect") +
+  plot_annotation(title = "2D Projection: 🐦 Tawny-bellied Babbler") &
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5)
+  )
+final_plot
+
+# Save to high-resolution PNG
+ggsave("2D Projection_Tawny_bellied_babbler.png", final_plot, width = 12, height = 8, dpi = 600)
