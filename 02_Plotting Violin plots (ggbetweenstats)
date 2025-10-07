@@ -1,87 +1,70 @@
+library(ggsci)
+library(ggplot2)
 library(tidyverse)
 library(ggstatsplot)
 library(patchwork)
-library(ggstatsplot)
-
 # Load your data
-df <- read_csv("C:/Users/vibha/Downloads/Indian Black Bird Plumage - RGB + HSV Values.csv")
-
-
+df <- read_csv("C:/Users/vibha/Downloads/AMNH  - Owlets Analysis.csv")
 df <- df %>%
   mutate(
     Subspecie = str_trim(str_to_title(Subspecie)),
     Region = str_trim(Region),
     mean_RGB = rowMeans(across(c(Red, Green, Blue)), na.rm = TRUE)
   )
+df_Throat <- df %>%
+  filter(Region == "Throat")
 
-
-df_Mantle_Scapular_Back <- df %>%
-  filter(Region == "Mantle_Scapular_Back")
-
-
-# Define base theme adjustments
-base_theme <- theme(
-  plot.title = element_text(size = 16),
-  axis.title = element_text(size = 14),
-  axis.text = element_text(size = 12),
-  legend.text = element_text(size = 12),
-  legend.title = element_text(size = 12),
-  strip.text = element_text(size = 14)
-)
-
-# Red
+# L*
 p_r <- ggbetweenstats(
-  data = df_crown,
+  data = df_Throat,
   x = Subspecie,
-  y = Red,
-  title = "Red Comparison - Mantle_Scapular_Back",
+  y = L,
+  xlab = "Subspecies",
+  title = "L* indicated lightness",
   type = "parametric",
-  violin.args = list(fill = "red", alpha = 0.4),
-  point.args = list(size = 3, alpha = 0.6),
-  ggtheme = theme_minimal(),
-  theme.args = list(base_theme)
+  package = "ggsci",
+  palette = "uniform_startrek"
 )
 
-# Green
+# a*
 p_g <- ggbetweenstats(
-  data = df_crown,
+  data = df_Throat,
   x = Subspecie,
-  y = Green,
-  title = "Green Comparison - Mantle_Scapular_Back",
+  y = a,
+  xlab = "Subspecies",
+  title = "a* is the red/green coordinate",
   type = "parametric",
-  violin.args = list(fill = "green", alpha = 0.4),
-  point.args = list(size = 3, alpha = 0.6),
-  ggtheme = theme_minimal(),
-  theme.args = list(base_theme)
+  package = "ggsci",
+  palette = "uniform_startrek"
 )
 
-# Blue
+# b*
 p_b <- ggbetweenstats(
-  data = df_crown,
+  data = df_Throat,
   x = Subspecie,
-  y = Blue,
-  title = "Blue Comparison - Mantle_Scapular_Back",
+  y = b,
+  xlab = "Subspecies",
+  title = "b* is the yellow/blue coordinate",
   type = "parametric",
-  violin.args = list(fill = "blue", alpha = 0.4),
-  point.args = list(size = 3, alpha = 0.6),
-  ggtheme = theme_minimal(),
-  theme.args = list(base_theme)
+  package = "ggsci",
+  palette = "uniform_startrek"
 )
 
-# Mean RGB
-p_mean <- ggbetweenstats(
-  data = df_crown,
-  x = Subspecie,
-  y = mean_RGB,
-  title = "Mean RGB Comparison - Mantle_Scapular_Back",
-  type = "parametric",
-  violin.args = list(fill = "purple", alpha = 0.4),
-  point.args = list(size = 3, alpha = 0.6),
-  ggtheme = theme_minimal(),
-  theme.args = list(base_theme)
+(p_r | p_g | p_b) +
+  plot_annotation(title = "Jungle Owlet (Male and Female) - CIELAB color space analysis for - Throat region")
+
+combined_plot <- combine_plots(
+  list(p_r, p_g, p_b),
+  plotgrid.args = list(nrow = 1),
+  annotation.args = list(
+    title = "Jungle Owlet (Male and Female) - CIELAB color space analysis for - Throat region",
+    caption = "Source: AMNH Museum Collection"
+  )
 )
-
-
-(p_r | p_g | p_b) / p_mean +
-  plot_annotation(title = "RGB & Mean RGB Comparisons for Region: Mantle_Scapular_Back")
-
+ggsave(
+  filename = "figures/Owlets - Throat.png",  # Name of the output file
+  plot = combined_plot,             # The plot object
+  width = 15,                       # Width of the image in inches
+  height = 10,                      # Height of the image in inches
+  dpi = 600                         # Resolution in dots per inch (DPI)
+)
