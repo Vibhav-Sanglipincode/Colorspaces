@@ -1,0 +1,112 @@
+library(pavo)
+library(dplyr)
+library(plotly)
+
+# --- Step 1: Read and prepare data ---
+dat <- read.csv("C:/Users/vibha/Downloads/Plumage - Indian Black Bird  - Sheet25.csv")
+colnames(dat) <- c("Region", "R", "G", "B", "uvB", "uvR", "Subspecies")
+
+dat <- dat %>%
+  mutate(
+    u = (uvR + uvB) / 2,
+    s = B,
+    m = G,
+    l = R
+  ) %>%
+  mutate(total = u + s + m + l) %>%
+  mutate(across(u:l, ~ .x / total)) %>%
+  select(-total)
+
+# --- Step 2: Filter region ---
+region_of_interest <- "Matnle_Scapular_Back"
+dat_region <- dat %>% filter(Region == region_of_interest)
+
+# --- Step 3: Convert to tetrahedral coordinates ---
+tcsdata <- colspace(dat_region[, c("u", "s", "m", "l")], space = "tcs")
+tcsdata <- cbind(tcsdata, dat_region[, c("Subspecies", "u", "s", "m", "l")])
+
+# --- Step 4: Define tetrahedral vertices ---
+vertices <- data.frame(
+  label = c("U", "S", "M", "L"),
+  x = c(0, 0.943, -0.471, 0),
+  y = c(0, 0, 0.816, -0.816),
+  z = c(1, -0.333, -0.333, -0.333)
+)
+achro <- data.frame(x = 0, y = 0, z = 0)
+
+# --- Step 5: Create hover text ---
+tcsdata$hover <- paste0(
+  "<b>Subspecies:</b> ", tcsdata$Subspecies, "<br>",
+  "u = ", round(tcsdata$u, 3), "<br>",
+  "s = ", round(tcsdata$s, 3), "<br>",
+  "m = ", round(tcsdata$m, 3), "<br>",
+  "l = ", round(tcsdata$l, 3)
+)
+
+# --- Step 6: Create tetrahedron faces (transparent) ---
+faces <- list(
+  list(c(1,2,3)),
+  list(c(1,3,4)),
+  list(c(1,4,2)),
+  list(c(2,3,4))
+)
+
+# --- Step 7: Plot with Plotly (no axes, just tetrahedron) ---
+fig <- plot_ly(showscale = FALSE)
+
+# Tetrahedron faces (lighter and hover-safe)
+# Replace mesh faces with simple edges:
+edges <- rbind(
+  c(1,2), c(1,3), c(1,4),
+  c(2,3), c(2,4), c(3,4)
+)
+for (e in 1:nrow(edges)) {
+  fig <- fig %>%
+    add_trace(
+      type = "scatter3d", mode = "lines",
+      x = vertices$x[edges[e,]], y = vertices$y[edges[e,]], z = vertices$z[edges[e,]],
+      line = list(color = "gray80", width = 3),
+      hoverinfo = "skip",
+      showlegend = FALSE
+    )
+}
+
+# Data points (add this *after* the faces)
+fig <- fig %>%
+  add_trace(
+    x = tcsdata$x, y = tcsdata$y, z = tcsdata$z,
+    type = "scatter3d", mode = "markers",
+    color = tcsdata$Subspecies,
+    text = tcsdata$hover,
+    hoverinfo = "text",
+    marker = list(size = 6, opacity = 0.95),
+    showlegend = TRUE
+  ) %>%
+  # Vertex labels
+  add_trace(
+    x = vertices$x, y = vertices$y, z = vertices$z,
+    type = "scatter3d", mode = "text",
+    text = vertices$label,
+    textfont = list(size = 16, color = "black"),
+    showlegend = FALSE
+  ) %>%
+  # Achromatic origin
+  add_trace(
+    x = 0, y = 0, z = 0,
+    type = "scatter3d", mode = "markers",
+    marker = list(size = 6, color = "black"),
+    name = "Achromatic origin"
+  ) %>%
+  layout(
+    title = paste("Avian Tetrahedral Color Space -", region_of_interest),
+    scene = list(
+      xaxis = list(visible = FALSE, showgrid = FALSE, zeroline = FALSE),
+      yaxis = list(visible = FALSE, showgrid = FALSE, zeroline = FALSE),
+      zaxis = list(visible = FALSE, showgrid = FALSE, zeroline = FALSE),
+      aspectmode = "cube",
+      bgcolor = "white"
+    )
+  )
+
+
+fig
