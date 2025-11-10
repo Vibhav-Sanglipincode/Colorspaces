@@ -18,8 +18,12 @@ dat <- dat %>%
   select(-total)
 
 # --- Step 2: Filter region ---
-region_of_interest <- "Matnle_Scapular_Back"
-dat_region <- dat %>% filter(Region == region_of_interest)
+
+Subspecies_of_interest <- "simillimus"
+dat_Subspecies <- dat %>% filter(Subspecies == Subspecies_of_interest)
+
+region_of_interest <- "Crown"
+dat_region <- dat_Subspecies %>% filter(Region == region_of_interest)
 
 # --- Step 3: Convert to tetrahedral coordinates ---
 tcsdata <- colspace(dat_region[, c("u", "s", "m", "l")], space = "tcs")
@@ -36,7 +40,7 @@ achro <- data.frame(x = 0, y = 0, z = 0)
 
 # --- Step 5: Create hover text ---
 tcsdata$hover <- paste0(
-  "<b>Subspecies:</b> ", tcsdata$Subspecies, "<br>",
+#  "<b>Subspecies:</b> ", tcsdata$Subspecies, "<br>",
   "u = ", round(tcsdata$u, 3), "<br>",
   "s = ", round(tcsdata$s, 3), "<br>",
   "m = ", round(tcsdata$m, 3), "<br>",
@@ -79,7 +83,7 @@ fig <- fig %>%
     color = tcsdata$Subspecies,
     text = tcsdata$hover,
     hoverinfo = "text",
-    marker = list(size = 6, opacity = 0.95),
+    marker = list(size = 4, opacity = 1),
     showlegend = TRUE
   ) %>%
   # Vertex labels
@@ -87,18 +91,18 @@ fig <- fig %>%
     x = vertices$x, y = vertices$y, z = vertices$z,
     type = "scatter3d", mode = "text",
     text = vertices$label,
-    textfont = list(size = 16, color = "black"),
+    textfont = list(size = 16, color = "black" ),
     showlegend = FALSE
   ) %>%
   # Achromatic origin
   add_trace(
     x = 0, y = 0, z = 0,
     type = "scatter3d", mode = "markers",
-    marker = list(size = 6, color = "black"),
+    marker = list(size = 1, color = "black"),
     name = "Achromatic origin"
   ) %>%
   layout(
-    title = paste("Avian Tetrahedral Color Space -", region_of_interest),
+    title = paste("Avian Tetrahedral Color Space -", Subspecies_of_interest),
     scene = list(
       xaxis = list(visible = FALSE, showgrid = FALSE, zeroline = FALSE),
       yaxis = list(visible = FALSE, showgrid = FALSE, zeroline = FALSE),
@@ -110,3 +114,49 @@ fig <- fig %>%
 
 
 fig
+
+
+################################## FOR PCA #################################################################
+
+# --- Step 3.5: PCA of u, s, m, l values ---
+usml_values <- dat_region[, c("u", "s", "m", "l")]
+pca_res <- prcomp(usml_values, center = TRUE, scale. = TRUE)
+
+# Summary of PCA
+summary(pca_res)
+
+# PCA loadings
+pca_res$rotation
+
+# Add PCA scores to your data
+dat_region <- cbind(dat_region, pca_res$x)
+
+# Optional: visualize PCA
+library(ggplot2)
+
+ggplot(dat_region, aes(PC1, PC2, color = Subspecies)) +
+  stat_ellipse(
+    type = "norm", 
+    level = 0.68,     # 68% confidence ellipse (≈ 1 SD)
+    linewidth = 1,
+    linetype = "solid"
+  ) +
+  geom_point(size = 4, alpha = 0.8) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = paste("PCA of u-s-m-l Cone Values -", region_of_interest),
+    x = paste0("PC1 (", round(summary(pca_res)$importance[2, 1] * 100, 1), "%)"),
+    y = paste0("PC2 (", round(summary(pca_res)$importance[2, 2] * 100, 1), "%)")
+  ) +
+  theme(
+    legend.position = "right",
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black")
+  )
+
+
+
+
+
+
+
